@@ -13,7 +13,7 @@ http.createServer(async (request, response) => {
 		response.end(JSON.stringify(await json));
 	};
 
-	let [requestType, ...requestPath] = decodeURI(request.url).split('/').filter(a => a);
+	let [_, requestType, ...requestPath] = decodeURI(request.url).split('/');
 	let path = requestPath.join('/');
 	let dir = requestPath.slice(0, -1).join('/');
 	let file = requestPath.slice(-1)[0];

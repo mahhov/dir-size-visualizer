@@ -32,7 +32,6 @@ class Sizer {
 
 	static async dirSize(dir) {
 		let output = await exec(this.dirSizeScript(dir));
-		console.log('dir', dir, 'script', this.dirSizeScript(dir), 'output', output, 'parse', this.parseOutputBytes(output));
 		return this.parseOutputBytes(output);
 	}
 
