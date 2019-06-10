@@ -1,0 +1,190 @@
+<style>
+	body {
+		max-width: 800px;
+		margin-left: auto;
+		margin-right: auto;
+	}
+
+	.top {
+		display: flex;
+	}
+
+	.top #base-dir-input {
+		flex-grow: 1;
+	}
+
+	#output-div {
+		margin-top: 20px;
+	}
+
+	#output-div .item, #output-div .item .text {
+		display: flex;
+		justify-content: space-between;
+	}
+
+	#output-div .item.total {
+		margin-top: 10px;
+	}
+
+	#output-div .item .text {
+		flex-grow: 1;
+		flex-basis: 0;
+		overflow: hidden;
+		white-space: nowrap;
+	}
+
+	#output-div .item.dir .text {
+		color: blue;
+		cursor: pointer;
+	}
+
+	#output-div .item.dir .text:hover {
+		text-decoration: underline;
+	}
+
+	#output-div .item.total .text {
+		color: green;
+		font-weight: bold;
+	}
+
+	#output-div .item .text .name {
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	#output-div .item .text .size {
+		margin-left: 20px;
+	}
+
+	#output-div .item .text .size.error {
+		color: red;
+	}
+
+	#output-div .item .text .size.large {
+		font-weight: bold;
+	}
+
+	#output-div .item .chart {
+		flex-basis: 400px;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		margin: 2px 2px 2px 20px;
+		background: #eee;
+	}
+
+	#output-div .item.total .chart {
+		visibility: hidden;
+	}
+
+	#output-div .item .chart .chart-item {
+		flex-grow: 1;
+		background: #ddd;
+	}
+</style>
+
+<div class="top">
+	<input id="base-dir-input" value="C:/users/manukh/personal/calc">
+	<button id="up-dir-button">up</button>
+	<input id="size-filter-input" type="number" value="0" min="0" max="500">
+	<button id="view-button">view</button>
+</div>
+
+<span>30%</span>
+
+<div id="output-div"></div>
+
+<script>
+	const $ = document.querySelector.bind(document);
+	const $c = (type, text, classes = [], children = []) => {
+		let el = document.createElement(type);
+		el.textContent = text;
+		el.classList.add(...classes);
+		children.forEach(child => el.appendChild(child));
+		return el;
+	};
+	const $clear = el => {
+		while (el.firstChild)
+			el.firstChild.remove();
+	};
+
+	let cache = {};
+	let cachedFetch = async endpoint => cache[endpoint] = cache[endpoint] || (await fetch(endpoint)).json();
+	let api = async (command, ...paths) => cachedFetch(`/${command}/${paths.join('/')}`);
+
+	const MB = 1024 ** 2;
+	const itemTypes = {DIR: 0, FILE: 1, TOTAL: 2};
+	const itemTypeStrings = ['dir', 'file', 'total'];
+
+	let latestRequest;
+
+	let getItems = async baseDir => {
+		let dirs = api('list-dirs', baseDir).then(dirs =>
+			dirs.map(async dir =>
+				({name: dir, type: itemTypes.DIR, size: parseInt(await api('dir-size', baseDir, dir))})));
+		let files = api('list-files', baseDir).then(files =>
+			files.map(async file =>
+				({name: file, type: itemTypes.FILE, size: parseInt(await api('file-size', baseDir, file))})));
+		let items = await Promise.all([...await dirs, ...await files]);
+
+		let totalSize = items.reduce((sum, {size}) => sum + size, 0);
+		items.push({name: 'Total Size', type: itemTypes.TOTAL, size: totalSize});
+
+		return {items, totalSize};
+	};
+
+	let filterItemsBySize = (items, minSize) =>
+		items.filter(({type, size}) =>
+			type === itemTypes.TOTAL || size < 0 || size > minSize * MB);
+
+	let renderItems = (items, totalSize) => {
+		// todo make dir clickable
+		$clear($('#output-div'));
+		items
+			.sort((a, b) => (a.type - b.type) || (b.size - a.size))
+			.map(({name, type, size}) => {
+				let percent = 100 * size / totalSize;
+				let chartItemEl = $c('div', '', ['chart-item']);
+				chartItemEl.style.width = `${percent}%`;
+
+				let sizeClasses = ['size', size < 0 ? 'error' : '', size > 500 * MB ? 'large' : ''].filter(a => a);
+				let textEl = $c('div', '', ['text'], [
+					$c('div', name, ['name']),
+					$c('div', `${parseInt(size / MB)} (${parseInt(percent)}%)`, sizeClasses),
+				]);
+				if (type === itemTypes.DIR)
+					textEl.addEventListener('click', () => onDirClick(name));
+
+				return $c('div', '', ['item', itemTypeStrings[type]], [
+					textEl,
+					$c('div', '', ['chart'], [chartItemEl]),
+				])
+			})
+			.forEach(el => $('#output-div').appendChild(el));
+	};
+
+	let onUpDirClick = async () => {
+		$('#base-dir-input').value = $('#base-dir-input').value.match(/(.*)\/[^\/]+/)[1];
+		onInput();
+	};
+
+	let onDirClick = async name => {
+		$('#base-dir-input').value = `${$('#base-dir-input').value}/${name}`;
+		onInput();
+	};
+
+	let onInput = async () => {
+		let baseDir = $('#base-dir-input').value;
+		let sizeFilter = $('#size-filter-input').value;
+		let {items, totalSize} = await getItems(baseDir);
+		window.items = items;
+		items = filterItemsBySize(items, sizeFilter);
+		renderItems(items, totalSize);
+	};
+
+	// $('#base-dir-input').addEventListener('input', onInput);
+	// $('#size-filter-input').addEventListener('input', onInput);
+	$('#view-button').addEventListener('click', onInput);
+	$('#up-dir-button').addEventListener('click', onUpDirClick);
+	onInput();
+</script>
