@@ -90,7 +90,7 @@
 	<button id="view-button">view</button>
 </div>
 
-<span>30%</span>
+<div id="progress-div">100%</div>
 
 <div id="output-div"></div>
 
@@ -118,13 +118,24 @@
 
 	let latestRequest;
 
+	let setProgress = (completed, total) =>
+		$('#progress-div').textContent = `${parseInt(completed / total * 100)}%`;
+
 	let getItems = async baseDir => {
-		let dirs = api('list-dirs', baseDir).then(dirs =>
+		let completed = 0, total = 0;
+		let apiP = async (command, ...paths) => {
+			setProgress(completed, ++total);
+			let response = await api(command, ...paths);
+			setProgress(++completed, total);
+			return response;
+		};
+
+		let dirs = apiP('list-dirs', baseDir).then(dirs =>
 			dirs.map(async dir =>
-				({name: dir, type: itemTypes.DIR, size: parseInt(await api('dir-size', baseDir, dir))})));
-		let files = api('list-files', baseDir).then(files =>
+				({name: dir, type: itemTypes.DIR, size: parseInt(await apiP('dir-size', baseDir, dir))})));
+		let files = apiP('list-files', baseDir).then(files =>
 			files.map(async file =>
-				({name: file, type: itemTypes.FILE, size: parseInt(await api('file-size', baseDir, file))})));
+				({name: file, type: itemTypes.FILE, size: parseInt(await apiP('file-size', baseDir, file))})));
 		let items = await Promise.all([...await dirs, ...await files]);
 
 		let totalSize = items.reduce((sum, {size}) => sum + size, 0);
