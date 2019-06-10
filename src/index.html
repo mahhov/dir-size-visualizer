@@ -13,6 +13,15 @@
 		flex-grow: 1;
 	}
 
+	.progress-div {
+		margin-top: 5px;
+		background: rgb(220, 230, 255);
+	}
+
+	.progress-div #progress-bar {
+		background: #fff;
+	}
+
 	#output-div {
 		margin-top: 20px;
 	}
@@ -90,7 +99,11 @@
 	<button id="view-button">view</button>
 </div>
 
-<div id="progress-div">100%</div>
+<div class="progress-div">
+	<div id="progress-bar">
+		<span id="progress-text"></span>
+	</div>
+</div>
 
 <div id="output-div"></div>
 
@@ -118,8 +131,11 @@
 
 	let latestRequest;
 
-	let setProgress = (completed, total) =>
-		$('#progress-div').textContent = `${parseInt(completed / total * 100)}%`;
+	let setProgress = (completed, total) => {
+		let percentString = `${parseInt(completed / total * 100)}%`;
+		$('#progress-bar').style.width = percentString;
+		$('#progress-text').textContent = percentString;
+	};
 
 	let getItems = async baseDir => {
 		let completed = 0, total = 0;
