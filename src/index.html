@@ -154,6 +154,9 @@
 				({name: file, type: itemTypes.FILE, size: parseInt(await apiP('file-size', baseDir, file))})));
 		let items = await Promise.all([...await dirs, ...await files]);
 
+		if (!items.length)
+			return {};
+
 		let totalSize = items.reduce((sum, {size}) => sum + size, 0);
 		items.push({name: 'Total Size', type: itemTypes.TOTAL, size: totalSize});
 
@@ -204,12 +207,15 @@
 		let baseDir = $('#base-dir-input').value;
 		let sizeFilter = $('#size-filter-input').value;
 		let {items, totalSize} = await getItems(baseDir);
-		window.items = items;
+
+		if (!items || baseDir !== $('#base-dir-input').value)
+			return;
+
 		items = filterItemsBySize(items, sizeFilter);
 		renderItems(items, totalSize);
 	};
 
-	// $('#base-dir-input').addEventListener('input', onInput);
+	$('#base-dir-input').addEventListener('input', onInput);
 	$('#size-filter-input').addEventListener('input', onInput);
 	$('#view-button').addEventListener('click', onInput);
 	$('#up-dir-button').addEventListener('click', onUpDirClick);
