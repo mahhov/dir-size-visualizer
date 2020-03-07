@@ -131,7 +131,9 @@
 
 	let latestRequest;
 
-	let setProgress = (completed, total) => {
+	let setProgress = (completed, total, baseDir) => {
+		if (baseDir !== $('#base-dir-input').value)
+			return;
 		let percentString = `${parseInt(completed / total * 100)}%`;
 		$('#progress-bar').style.width = percentString;
 		$('#progress-text').textContent = percentString;
@@ -140,9 +142,9 @@
 	let getItems = async baseDir => {
 		let completed = 0, total = 0;
 		let apiP = async (command, ...paths) => {
-			setProgress(completed, ++total);
+			setProgress(completed, ++total, baseDir);
 			let response = await api(command, ...paths);
-			setProgress(++completed, total);
+			setProgress(++completed, total, baseDir);
 			return response;
 		};
 
